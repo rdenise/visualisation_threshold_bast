@@ -7,7 +7,6 @@ import os
 import argparse
 import glob
 from tqdm import tqdm
-import statistics
 
 ##########################################################################################
 ##########################################################################################
@@ -203,8 +202,11 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                     if qseqid in families and sseqid in families:
                         # Try to save calculation time
                         pident_blast = float(line_split[2]) / 100
-                        length = float(line_split[7]) - float(line_split[6]) + 1
-                        coverage_blast = length / statistics.mean([protein_dict[qseqid], protein_dict[sseqid]])
+                        length_query = float(line_split[7]) - float(line_split[6]) + 1
+                        length_subject = float(line_split[9]) - float(line_split[8]) + 1
+
+                        smallest_index = argmin([protein_dict[qseqid], protein_dict[sseqid]])
+                        coverage_blast = [length_query,length_subject][smallest_index] / protein_dict[[qseqid, sseqid][smallest_index]]
 
                         # If exist put in the table because both are in the family
                         line2write = f'{qseqid}\t{sseqid}\t{pident_blast}\t{evalue_blast}\t{coverage_blast}\tin_family_{families[qseqid]}\n'
@@ -223,8 +225,12 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                         elif (qseqid in prot_dict) and (sseqid in prot_dict):
                             # Try to save calculation time
                             pident_blast = float(line_split[2]) / 100
-                            length = float(line_split[7]) - float(line_split[6]) + 1
-                            coverage_blast = length / statistics.mean([protein_dict[qseqid], protein_dict[sseqid]])
+                            length_query = float(line_split[7]) - float(line_split[6]) + 1
+                            length_subject = float(line_split[9]) - float(line_split[8]) + 1
+
+                            smallest_index = argmin([protein_dict[qseqid], protein_dict[sseqid]])
+                            coverage_blast = [length_query,length_subject][smallest_index] / protein_dict[[qseqid, sseqid][smallest_index]]
+                          
                             # If exist put in the table because one of them is in the family
                             line2write = f'{qseqid}\t{sseqid}\t{pident_blast}\t{evalue_blast}\t{coverage_blast}\tout_family_{families[focus_id]}\n'
                             w_file.write(line2write)

@@ -12,6 +12,7 @@ Dependencies :
    - plotly 5.6.0
    - pandas 1.4.0
    - biopython 1.79 
+   - numpy 1.22
 
 Could be quickly install using conda and mamba
 

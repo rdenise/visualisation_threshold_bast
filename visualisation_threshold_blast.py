@@ -7,6 +7,7 @@ import os
 import argparse
 import glob
 from tqdm import tqdm
+import numpy as np
 
 ##########################################################################################
 ##########################################################################################
@@ -205,7 +206,7 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                         length_query = float(line_split[7]) - float(line_split[6]) + 1
                         length_subject = float(line_split[9]) - float(line_split[8]) + 1
 
-                        smallest_index = argmin([protein_dict[qseqid], protein_dict[sseqid]])
+                        smallest_index = np.argmin([protein_dict[qseqid], protein_dict[sseqid]])
                         coverage_blast = [length_query,length_subject][smallest_index] / protein_dict[[qseqid, sseqid][smallest_index]]
 
                         # If exist put in the table because both are in the family
@@ -228,7 +229,7 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                             length_query = float(line_split[7]) - float(line_split[6]) + 1
                             length_subject = float(line_split[9]) - float(line_split[8]) + 1
 
-                            smallest_index = argmin([protein_dict[qseqid], protein_dict[sseqid]])
+                            smallest_index = np.argmin([protein_dict[qseqid], protein_dict[sseqid]])
                             coverage_blast = [length_query,length_subject][smallest_index] / protein_dict[[qseqid, sseqid][smallest_index]]
                           
                             # If exist put in the table because one of them is in the family

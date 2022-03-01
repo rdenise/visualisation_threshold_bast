@@ -17,7 +17,7 @@ Dependencies :
 Could be quickly install using conda and mamba
 
 ```bash
-mamba create -n visual_threshold -c biopython -c conda-forge tqdm plotly pandas biopython
+mamba create -n visual_threshold -c bioconda -c conda-forge tqdm plotly pandas biopython
 conda activate visual_threshold
 ```
 

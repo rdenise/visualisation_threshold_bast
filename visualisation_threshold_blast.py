@@ -832,9 +832,9 @@ general_option.add_argument("-filter",'--filter_length',
 
 args = parser.parse_args()
 
-if 'output' in args:
+if args.output:
     OUTPUT = args.output
-else :
+else:
     OUTPUT = os.path.dirname(args.blastfile)
 
 create_folder(OUTPUT)

@@ -44,7 +44,12 @@ General input dataset options:
   -o <OUTPUT_DIR>, --output <OUTPUT_DIR>
                         Using <OUTPUT_DIR> for output files (default: blastFile directory)
   -filter <SIZE>, --filter_length <SIZE>
-                        Use a filter in the length of the alignment
-
+                        Use a filter in the length of the alignment (default: 100)
+  -lcc <METHOD>, --length_choice_cov <METHOD>
+                        Length used for percentage overlap calculation between 2 sequences: 'mean'=mean of the 2 lengths (default), 'subject'=subject length, 'query'=query length,
+                        'shortest'=shortest length, 'longest'=longest length
+  -id <METHOD>, --length_choice_id <METHOD>
+                        Length used for percentage identity calculation between 2 sequences: 'mean'=mean of the 2 lengths (default), 'subject'=subject length, 'query'=query length,
+                        'shortest'=shortest length, 'longest'=longest length 'HSP'=HSP length
 ```
 

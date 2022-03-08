@@ -83,7 +83,7 @@ args = parser.parse_args()
 
 if args.output:
     OUTPUT = args.output
-else :
+else:
     OUTPUT = os.path.dirname(args.blastfile)
 
 utils.create_folder(OUTPUT)

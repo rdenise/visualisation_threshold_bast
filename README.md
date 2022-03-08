@@ -12,11 +12,12 @@ Dependencies :
    - plotly 5.6.0
    - pandas 1.4.0
    - biopython 1.79 
+   - numpy 1.22
 
 Could be quickly install using conda and mamba
 
 ```bash
-mamba create -n visual_threshold -c biopython -c conda-forge tqdm plotly pandas biopython
+mamba create -n visual_threshold -c bioconda -c conda-forge tqdm plotly pandas biopython
 conda activate visual_threshold
 ```
 

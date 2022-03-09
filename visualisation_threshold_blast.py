@@ -76,7 +76,7 @@ general_option.add_argument("-id",'--length_choice_id',
                                        'shortest'=shortest length, 'longest'=longest length
                                        'HSP'=HSP length
                             """),
-                            )                        
+                            )
 ##########################################################################
 
 args = parser.parse_args()

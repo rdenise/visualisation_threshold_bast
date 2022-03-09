@@ -38,7 +38,7 @@ def scatter2D_plotly(all_fam_file, name_tmp="tmp_interactive_scatter.html"):
         
     df_fam_all['fam_name'] = df_fam_all.fam.apply(lambda x: x.split('family_')[-1])
 
-    for fam, df_fam in tqdm(df_fam_all.groupby('fam_name')) :
+    for fam, df_fam in tqdm.tqdm(df_fam_all.groupby('fam_name')) :
 
         # First element of family columns = in|out_family_seed
         seed = fam
@@ -209,7 +209,7 @@ def scatter3D_plotly(all_fam_file, name_tmp="tmp_interactive_scatter3D.html"):
 
     df_fam_all['fam_name'] = df_fam_all.fam.apply(lambda x: x.split('family_')[-1])
 
-    for fam, df_fam in tqdm(df_fam_all.groupby('fam_name')) :
+    for fam, df_fam in tqdm.tqdm(df_fam_all.groupby('fam_name')) :
         
         df_fam = df_fam.drop_duplicates(['pident', 'coverage', 'evalue', 'fam']).reset_index(drop=True)
 

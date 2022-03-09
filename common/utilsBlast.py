@@ -3,6 +3,36 @@ import numpy as np
 
 ##########################################################################
 
+def count_hsps(blast_out):
+    """Iterate over blast output. It considers that the output
+    is in outfmt 6 and that all the hsp should be one after the
+    other
+
+    Args:
+        blast_out (string): Path to a blast tabulated output
+
+    return:
+        int: number of hsps
+    """
+
+    current_pair = '' 
+
+    with open(blast_out) as r_file:
+
+        for line in r_file:
+            split_line = line.rstrip().split('\t')
+
+            if current_pair == '':
+                current_pair = (split_line[0], split_line[1])
+                number = 1
+            elif (split_line[0], split_line[1]) != current_pair:
+                current_pair = (split_line[0], split_line[1])
+                number += 1
+                
+        return number
+
+##########################################################################
+
 def iterrator_on_blast_hsp(blast_out):
     """Iterate over blast output. It considers that the output
     is in outfmt 6 and that all the hsp should be one after the
@@ -397,26 +427,24 @@ def summarize_hits(df_hsps, length_query, length_subject, option_cov='mean', opt
     Returns:
         int, float, float, float, float: Return the needed values to filter the hits
     """
-
-    numberOfHSPs = df_hsps.shape[0]
     
     # Sort HSPs by query start position
     df_hsps.sort_values('qstart', inplace=True, ignore_index=True)
     
     # N-term delta between query and subject
-    delta_lg = abs(df_hsps.iloc[0].qstart - df_hsps.iloc[0].sstart)
+    delta_lg = abs(df_hsps.qstart.values[0] - df_hsps.sstart.values[0])
     
     # C-term delta between query and subject and add to length difference between aligned sequences
-    delta_lg += abs((length_query - df_hsps.iloc[-1].qend) - (length_subject - df_hsps.iloc[-1].send))
+    delta_lg += abs((length_query - df_hsps.qend.values[-1]) - (length_subject - df_hsps.send.values[-1]))
     
-    # Internal gaps
-    query_starts = df_hsps.loc[1:, 'qstart'].values
-    query_ends = df_hsps.loc[:numberOfHSPs-1, 'qend'].values
-    subject_starts = df_hsps.loc[1:, 'sstart'].values
-    subject_ends = df_hsps.loc[:numberOfHSPs-1, 'send'].values
+    # Internal gaps 
+    query_starts = df_hsps.qstart.values[1:]
+    query_ends = df_hsps.qend.values[:-1]
+    subject_starts = df_hsps.sstart.values[1:]
+    subject_ends = df_hsps.send.values[:-1]
     
     delta_lg += np.sum(np.abs((query_starts - query_ends) - (subject_starts - subject_ends)))
-    
+
     # Calculate total length, score, Identities and Positives :
     score_total = np.sum(df_hsps.bitscore.values)
     length_total = np.sum(df_hsps.lgHSP.values)

@@ -1,6 +1,7 @@
 from Bio import SeqIO
 import tqdm
 import os
+import numpy as np
 
 from common import generator
 from common import utilsBlast
@@ -101,18 +102,20 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                 'sstart', 'send', 'evalue', 'bitscore']
 
     # Get the types of te columns for multiple HSPs dataframe
-    blast_dtypes = {'qseqid':'string',
-                    'sseqid':'string',
-                    'pident':'float64',
-                    'length':'int32',
-                    'mismatch':'int32',
-                    'gapopen':'int32',
-                    'qstart':'int32',
-                    'qend':'int32',
-                    'sstart':'int32',
-                    'send':'int32',
-                    'evalue':'float64',
-                    'bitscore':'float64'}
+    blast_dtypes = [('qseqid','S100'),
+                    ('sseqid','S100'),
+                    ('pident',np.float64),
+                    ('length',np.int32),
+                    ('mismatch',np.int32),
+                    ('gapopen',np.int32),
+                    ('qstart',np.int32),
+                    ('qend',np.int32),
+                    ('sstart',np.int32),
+                    ('send',np.int32),
+                    ('evalue',np.float64),
+                    ('bitscore',np.float64),
+                ]
+
 
     # Header of the output
     final_header = ['protein1', 'protein2', 'pident', 'evalue', 'coverage', 'fam']
@@ -131,28 +134,27 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
             # Get the number of hsps
             num_HSPs = len(sub_blast)
 
+            qseqid = sub_blast[0][0]
+            sseqid = sub_blast[0][1]
+
             if num_HSPs == 1:
-                qseqid, sseqid, pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = sub_blast[0], 
-                                                                                                                blast_header = blast_names,
-                                                                                                                dict_protein = protein_dict,
-                                                                                                                option_cov = option_cov,
-                                                                                                                option_pid = option_pid)
+                pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = sub_blast[0], 
+                                                                                                length_query = protein_dict[qseqid], 
+                                                                                                length_subject = protein_dict[sseqid],
+                                                                                                option_cov = option_cov,
+                                                                                                option_pid = option_pid)
             else:
                 df_hsps = utilsBlast.prepare_df_hsps(list_hsps = sub_blast,
                                                     blast_dtypes = blast_dtypes, 
-                                                    blast_names = blast_names,
                                                     HSPMIN = length_treshold)
 
                 if df_hsps.shape[0] == 1:
-                    qseqid, sseqid, pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = df_hsps[0], 
-                                                                                                blast_header = blast_names,
-                                                                                                dict_protein = protein_dict,
-                                                                                                option_cov = option_cov,
-                                                                                                option_pid = option_pid)
+                    pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = df_hsps[0], 
+                                                                                                    length_query = protein_dict[qseqid], 
+                                                                                                    length_subject = protein_dict[sseqid],
+                                                                                                    option_cov = option_cov,
+                                                                                                    option_pid = option_pid)
                 else:
-                    sseqid = df_hsps['sseqid'][0]
-                    qseqid = df_hsps['qseqid'][0]
-
                     delta_lg, coverage_blast, pident_blast, evalue_blast, score = utilsBlast.summarize_hits(df_hsps = df_hsps, 
                                                                                                             length_query = protein_dict[qseqid], 
                                                                                                             length_subject = protein_dict[sseqid],

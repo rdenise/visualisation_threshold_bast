@@ -1,5 +1,6 @@
 import numpy as np
 from numba import jit
+import numpy.lib.recfunctions as rfn 
 
 ##########################################################################
 
@@ -525,32 +526,32 @@ def summarize_hits(df_hsps, length_query, length_subject, option_cov='mean', opt
 
 ##########################################################################
 
-def summarize_hit_only(split_line, blast_header, dict_protein, option_cov='mean', option_pid='mean'):
+def summarize_hit_only(split_line, length_query, length_subject, option_cov='mean', option_pid='mean'):
     """Summarize information of a single hit.
 
     Args:
         split_line (list of string): Split line of the blast output
-        blast_header (list of strings): List of the header in the blast outfmt 6 output
-        dict_protein (dict): Dictionnary wit the length of all proteins
+        length_query (int): Length of the query
+        length_subject (int): Length of the subject
         option_cov (str, optional): Silix option for the coverage calculation. Defaults to 'mean'.
         option_pid (str, optional): Silix option for the percentage of identitities calculation. Defaults to 'mean'.
 
     Returns:
-        string, string, float, float, float, float: Return the needed values to filter the hits
+        float, float, float, float: Return the needed values to filter the hits
     """
-    # Get the name of the sequence
-    qseqid = split_line[blast_header.index('qseqid')]
-    sseqid = split_line[blast_header.index('sseqid')]
+    # Get the name of the sequence: 'qseqid': 0, 'sseqid': 1
+    qseqid = split_line[0]
+    sseqid = split_line[1]
 
-    # Get all the identical in the sequence
-    perc_id = float(split_line[blast_header.index('pident')])
-    aln_length = int(split_line[blast_header.index('length')])
+    # Get all the identical in the sequence: pident: 2, length: 3
+    perc_id = float(split_line[2])
+    aln_length = int(split_line[3])
     pos = np.floor(perc_id * aln_length / 100 + 0.5)
 
-    sstart = int(split_line[blast_header.index('sstart')])
-    qstart = int(split_line[blast_header.index('qstart')])
-    send = int(split_line[blast_header.index('send')])
-    qend = int(split_line[blast_header.index('qend')])
+    qstart = int(split_line[6])
+    qend = int(split_line[7])
+    sstart = int(split_line[8])
+    send = int(split_line[9])
 
     # Calculation as if multiple hit
     lg_aln_subject = length_aln_on_sequence(start=sstart, end=send)
@@ -559,21 +560,21 @@ def summarize_hit_only(split_line, blast_header, dict_protein, option_cov='mean'
     lg_total = max(lg_aln_query, lg_aln_subject)
 
     perc_id = calculate_percid(pos_total=pos,
-                               length_query=dict_protein[qseqid],
-                               length_subject=dict_protein[sseqid],
+                               length_query=length_query,
+                               length_subject=length_subject,
                                length_total=lg_total, 
                                option_pid=option_pid)
 
     cov = calculate_coverage(length_total=lg_total,
-                             length_query=dict_protein[qseqid],
-                             length_subject=dict_protein[sseqid], 
+                             length_query=length_query,
+                             length_subject=length_subject, 
                              option_cov=option_cov)
 
-    # Get the rest
-    evalue = float(split_line[blast_header.index('evalue')])
-    score = float(split_line[blast_header.index('bitscore')])
+    # Get the rest: evalue: 10, bitscore:11
+    evalue = float(split_line[10])
+    score = float(split_line[11])
 
-    return qseqid, sseqid, perc_id, cov, evalue, score
+    return perc_id, cov, evalue, score
 
 ##########################################################################
 ##########################################################################

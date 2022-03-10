@@ -10,9 +10,9 @@ Dependencies :
 - Python >=3.9
    - tqdm 4.62.3
    - plotly 5.6.0
-   - pandas 1.4.0
    - biopython 1.79 
-   - numpy 1.22
+   - numpy 1.21.5
+   - numba 0.55.1
 
 Could be quickly install using conda and mamba
 

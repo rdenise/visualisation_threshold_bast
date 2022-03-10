@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+from numba import jit
 
 ##########################################################################
 
@@ -67,50 +67,69 @@ def iterrator_on_blast_hsp(blast_out):
 
 ##########################################################################
 
+@jit(nopython=True)
 def get_orientation(sstart, send):
     """Returns the orientation between two points.
 
     Args:
-        sstart (int): Start of the sequence
-        send (int): End of the sequence
+        sstart (numpy.array): Start of the sequence
+        send (numpy.array): End of the sequence
 
     Returns:
-        int: 1 or -1 depending on the orientation
+        numpy.array: 1 or -1 depending on the orientation
     """
     
-    return ((send - sstart) / abs((send - sstart))).astype(int)
+    return (send - sstart) // np.abs((send - sstart))
 
 ##########################################################################
 
+@jit(nopython=True)
 def update_values(old_values, sens):
     """Update sequence start/end with depending of the orientation.
 
     Args:
-        old_values (int): Position in the sequence
-        sens (int): 1 or -1 depending on the orientation
+        old_values (numpy.array): Position in the sequence
+        sens (numpy.array): 1 or -1 depending on the orientation
 
     Returns:
-        int: Position in the sequence
+        np.array: Position in the sequence
     """
 
     return old_values * sens
 
 ##########################################################################
 
+@jit(nopython=True)
 def length_aln_on_sequence(start, end):
     """Return the length of the sequence.
 
     Args:
-        start (int): Start of the sequence
-        end (int): End of the sequence
+        start (numpy.array): Start of the sequence
+        end (numpy.array): End of the sequence
 
     Returns:
-        int: Length of the protein
+        np.array: Length of the protein
     """
     return end - start + 1
 
 ##########################################################################
 
+@jit(nopython=True)
+def calculateIdentities(percIdentity, length):
+    """Return the length of the sequence.
+
+    Args:
+        percIdentity (numpy.array): Percentage of identity from blast
+        length (numpy.array): length of the alignment 
+
+    Returns:
+        np.array: number of identical amino acids in the alignment
+    """    
+    return np.floor(percIdentity * length / 100 + 0.5)
+
+##########################################################################
+
+@jit(nopython=True)
 def calculate_fraction(delta, lgHSP, bitscore, pid, pos):
     """Calculate the new score, identities and positives of the hsp2.
 
@@ -148,36 +167,38 @@ def remove_overlap_query(hsp1, hsp2):
     """Remove overlap with the given hsp2 in the query.
 
     Args:
-        hsp1 (pandas.Series): Blast values of the given hsp (best)
-        hsp2 (pandas.Series): Blast values of the given hsp (questioning)
+        hsp1 (np.array): Blast values of the given hsp (best)
+        hsp2 (np.array): Blast values of the given hsp (questioning)
 
     Returns:
         dict: Dictionnary with the updated values for the hsp2
     """
-    # Calculate where is the overlap and remove the overlapping part
-    if hsp2.qstart < hsp1.qstart:
-        new_qstart = hsp2.qstart
-        new_qend = hsp1.qstart -1
-        delta = hsp2.qend - new_qend
-        new_sstart = hsp2.sstart
-        new_send = hsp2.send - delta
+    # Calculate where is the overlap and remove the overlapping part: 'qstart': 6, 'qend': 7, 'sstart': 8, 'send': 9,
+    if hsp2[6] < hsp1[6]:
+        new_qstart = hsp2[6]
+        new_qend = hsp1[6] -1
+        delta = hsp2[7] - new_qend
+        new_sstart = hsp2[8]
+        new_send = hsp2[9] - delta
         
-    elif hsp2.qend > hsp1.qend:
-        new_qstart = hsp1.qend + 1
-        new_qend = hsp2.qend
-        delta = new_qstart - hsp2.qstart 
-        new_sstart = hsp2.sstart + delta
-        new_send = hsp2.send
+    elif hsp2[7] > hsp1[7]:
+        new_qstart = hsp1[7] + 1
+        new_qend = hsp2[7]
+        delta = new_qstart - hsp2[6] 
+        new_sstart = hsp2[8] + delta
+        new_send = hsp2[9]
         
+    # lgHSP: 17, bitscore: 11, id: 12, pos:13
     new_score, new_id, new_pos, new_length = calculate_fraction(delta=delta, 
-                                                                lgHSP=hsp2.lgHSP,
-                                                                bitscore=hsp2.bitscore, 
-                                                                pid=hsp2.id,
-                                                                pos=hsp2.pos)
+                                                                lgHSP=hsp2[17],
+                                                                bitscore=hsp2[11], 
+                                                                pid=hsp2[12],
+                                                                pos=hsp2[13])
         
-    return {'bitscore':new_score, 'length':new_length,
-            'qend':new_qend, 'qstart':new_qstart, 'send':new_send,
-            'sstart':new_sstart, 'pos':new_pos, 'id':new_id}
+    return {11:new_score, 17:new_length,
+            7:new_qend, 6:new_qstart, 9:new_send,
+            8:new_sstart, 13:new_pos, 12:new_id}
+
 
 ##########################################################################
 
@@ -191,30 +212,31 @@ def remove_overlap_subject(hsp1, hsp2):
     Returns:
         dict: Dictionnary with the updated values for the hsp2
     """
-    # Calculate where is the overlap and remove the overlapping part
-    if hsp2.sstart < hsp1.sstart:
-        new_sstart = hsp2.sstart
-        new_send = hsp1.sstart -1
-        delta = hsp2.send - new_send
-        new_qstart = hsp2.qstart
-        new_qend = hsp2.qend - delta
+    # Calculate where is the overlap and remove the overlapping part: 'qstart': 6, 'qend': 7, 'sstart': 8, 'send': 9,
+    if hsp2[8] < hsp1[8]:
+        new_sstart = hsp2[8]
+        new_send = hsp1[8] -1
+        delta = hsp2[9] - new_send
+        new_qstart = hsp2[6]
+        new_qend = hsp2[7] - delta
         
-    elif hsp2.send > hsp1.send:
-        new_sstart = hsp1.send + 1
-        new_send = hsp2.send
-        delta = new_sstart - hsp2.sstart 
-        new_qstart = hsp2.qstart + delta
-        new_qend = hsp2.qend
+    elif hsp2[9] > hsp1[9]:
+        new_sstart = hsp1[9] + 1
+        new_send = hsp2[9]
+        delta = new_sstart - hsp2[8] 
+        new_qstart = hsp2[6] + delta
+        new_qend = hsp2[7]
         
+    # lgHSP: 17, bitscore: 11, id: 12, pos:13
     new_score, new_id, new_pos, new_length = calculate_fraction(delta=delta, 
-                                                                lgHSP=hsp2.lgHSP,
-                                                                bitscore=hsp2.bitscore, 
-                                                                pid=hsp2.id,
-                                                                pos=hsp2.pos)
+                                                                lgHSP=hsp2[17],
+                                                                bitscore=hsp2[11], 
+                                                                pid=hsp2[12],
+                                                                pos=hsp2[13])
         
-    return {'bitscore':new_score, 'lgHSP':new_length,
-            'qend':new_qend, 'qstart':new_qstart, 'send':new_send,
-            'sstart':new_sstart, 'pos':new_pos, 'id':new_id}
+    return {11:new_score, 17:new_length,
+            7:new_qend, 6:new_qstart, 9:new_send,
+            8:new_sstart, 13:new_pos, 12:new_id}
 
 ##########################################################################
 
@@ -222,58 +244,58 @@ def checkHSPS(hsp1, hsp2, HSPMIN=100):
     """compare two HSPS in the blast output
 
     Args:
-        hsp1 (pandas.Series): Blast values of the given hsp (best)
-        hsp2 (pandas.Series): Blast values of the given hsp (questioning)
+        hsp1 (np.array): Blast values of the given hsp (best)
+        hsp2 (np.array): Blast values of the given hsp (questioning)
         HSPMIN (int, optional): Minumum length of the HSP. Defaults to 100.
 
     Returns:
         dict: Dictionnary with the updated values for the hsp2
     """
-    dict_update = {'stat':0}
+    dict_update = {18:0}
     
-    # Check if the hsp2 is in a different orientation than hsp1
-    if hsp1.sens != hsp2.sens:
-        # print(f'orientation wrong: {hsp1.sens} != {hsp2.sens}')
+    # Check if the hsp2 is in a different orientation than hsp1: 'sens': 14
+    if hsp1[14] != hsp2[14]:
+        # print(f'orientation wrong: {hsp1[14]} != {hsp2[14]}')
         return dict_update
     
-    # Check is hsp2 inside hsp1 for the query sequence
-    if hsp1.qstart >= hsp2.qstart and hsp1.qend <= hsp2.qend:
-        # print(f'hsp2 inside hsp1 for query: {hsp1.qstart} >= {hsp2.qstart} and {hsp1.qend} <= {hsp2.qend}')
+    # Check is hsp2 inside hsp1 for the query sequence: 'qstart': 6, 'qend': 7,
+    if hsp1[6] >= hsp2[6] and hsp1[7] <= hsp2[7]:
+        # print(f'hsp2 inside hsp1 for query: {hsp1[6]} >= {hsp2[6]} and {hsp1[7]} <= {hsp2[7]}')
         return dict_update
     
-    # Check is hsp1 inside hsp2 for the query sequence
-    elif hsp1.qstart <= hsp2.qstart and hsp1.qend >= hsp2.qend:
-        # print(f'hsp1 inside hsp2 for query: {hsp1.qstart} <= {hsp2.qstart} and {hsp1.qend} >= {hsp2.qend}')
+    # Check is hsp1 inside hsp2 for the query sequence: 'qstart': 6, 'qend': 7,
+    elif hsp1[6] <= hsp2[6] and hsp1[7] >= hsp2[7]:
+        # print(f'hsp1 inside hsp2 for query: {hsp1[6]} <= {hsp2[6]} and {hsp1[7]} >= {hsp2[7]}')
         return dict_update  
 
-    # Check is hsp1 inside hsp2 for the subject sequence
-    elif hsp1.sstart >= hsp2.sstart and hsp1.send <= hsp2.send:
-        # print(f'hsp2 inside hsp1 for subject: {hsp1.sstart} >= {hsp2.sstart} and {hsp1.send} <= {hsp2.send}')
+    # Check is hsp1 inside hsp2 for the subject sequence: 'sstart': 8, 'send': 9,
+    elif hsp1[8] >= hsp2[8] and hsp1[9] <= hsp2[9]:
+        # print(f'hsp2 inside hsp1 for subject: {hsp1[8]} >= {hsp2[8]} and {hsp1[9]} <= {hsp2[9]}')
         return dict_update
     
-    # Check is hsp2 inside hsp1 for the subject sequence
-    elif hsp1.sstart <= hsp2.sstart and hsp1.send >= hsp2.send:
-        # print(f'hsp1 inside hsp2 for subject: {hsp1.sstart} <= {hsp2.sstart} and {hsp1.send} >= {hsp2.send}')
+    # Check is hsp2 inside hsp1 for the subject sequence: 'sstart': 8, 'send': 9,
+    elif hsp1[8] <= hsp2[8] and hsp1[9] >= hsp2[9]:
+        # print(f'hsp1 inside hsp2 for subject: {hsp1[8]} <= {hsp2[8]} and {hsp1[9]} >= {hsp2[9]}')
         return dict_update 
 
-    # reject HSPs that are in different orientation:
+    # reject HSPs that are in different orientation: 'qstart': 6, 'qend': 7, 'sstart': 8, 'send': 9,
     # Query:    ---- A ---- B -----   A = HSP1 
     # Sbjct:    ---- B ---- A -----   B = HSP2
 
-    if (hsp1.qend - hsp2.qend) * (hsp1.send - hsp2.send) < 0:
-        # print(f'HSPs are in different orientation 1: ({hsp1.qend} - {hsp2.qend}) * ({hsp1.send} - {hsp2.send}) ===> {(hsp1.qend - hsp2.qend) * (hsp1.send - hsp2.send)} < 0')
+    if (hsp1[7] - hsp2[7]) * (hsp1[9] - hsp2[9]) < 0:
+        # print(f'HSPs are in different orientation 1: ({hsp1[7]} - {hsp2[7]}) * ({hsp1[9]} - {hsp2[9]}) ===> {(hsp1[7] - hsp2[7]) * (hsp1[9] - hsp2[9])} < 0')
         return dict_update
-    elif (hsp1.qstart - hsp2.qstart) * (hsp1.sstart - hsp2.sstart) < 0:
-        # print(f'HSPs are in different orientation 2: ({hsp1.qstart} - {hsp2.qstart}) * ({hsp1.sstart} - {hsp2.send}) ===> {(hsp1.qstart - hsp2.qstart) * (hsp1.sstart - hsp2.sstart)} < 0')
+    elif (hsp1[6] - hsp2[6]) * (hsp1[8] - hsp2[8]) < 0:
+        # print(f'HSPs are in different orientation 2: ({hsp1[6]} - {hsp2[6]}) * ({hsp1[8]} - {hsp2[8]}) ===> {(hsp1[6] - hsp2[6]) * (hsp1[8] - hsp2[8])} < 0')
         return dict_update
     
-    overlap_q = (hsp2.qstart - hsp1.qend) * (hsp2.qend - hsp1.qstart)
-    overlap_s = (hsp2.sstart - hsp1.send) * (hsp2.send - hsp1.sstart)
+    overlap_q = (hsp2[6] - hsp1[7]) * (hsp2[7] - hsp1[6])
+    overlap_s = (hsp2[8] - hsp1[9]) * (hsp2[9] - hsp1[8])
     
     # Accept non-overlapping HSPs in correct orientation
     if overlap_q > 0 and overlap_s > 0 :
         # print(f'No overlap in query and subject: {overlap_q} > 0 and {overlap_s} > 0')
-        dict_update['stat'] = 1
+        dict_update[18] = 1
         return dict_update
     
     # Test if the query is overlaping
@@ -281,82 +303,114 @@ def checkHSPS(hsp1, hsp2, HSPMIN=100):
         # print(f'Overlap in query: {overlap_q} > 0')
         dict_update = remove_overlap_query(hsp1=hsp1, 
                                            hsp2=hsp2)
-        hsp2.update(dict_update)
-        overlap_s = (hsp2.sstart - hsp1.send) * (hsp2.send - hsp1.sstart)
+        
+        # update the hsp2 array with the new values
+        for index_key in dict_update:
+            hsp2[index_key] = dict_update[index_key]
+            
+        overlap_s = (hsp2[8] - hsp1[9]) * (hsp2[9] - hsp1[8])
     
     # Test if the subject is overlaping after possible update of an overlaping query
     if overlap_s < 0:
         # print(f'Overlap in subject: {overlap_s} > 0')
         dict_update = remove_overlap_subject(hsp1=hsp1, 
                                              hsp2=hsp2)
-        hsp2.update(dict_update)
+        
+        # update the hsp2 array with the new values
+        for index_key in dict_update:
+            hsp2[index_key] = dict_update[index_key]
     
     # Filter out HSPs that are too short
-    if hsp2.lgHSP < HSPMIN:
-        # print(f'HSP too short: {hsp2.lgHSP} < {HSPMIN}')
-        dict_update['stat'] = 0
+    if hsp2[17] < HSPMIN:
+        # print(f'HSP too short: {hsp2[17]} < {HSPMIN}')
+        dict_update[18] = 0
         return dict_update
     
     # Set status to 1 for consistent HSPs
-    dict_update['stat'] = 1
+    dict_update[18] = 1
     return dict_update
-
 
 ##########################################################################
 
-def prepare_df_hsps(list_hsps, blast_names, blast_dtypes, HSPMIN=100):
+def prepare_df_hsps(list_hsps, blast_dtypes, HSPMIN=100):
     """Prepare a dataframe containing HSPs and update values.
 
     Args:
         list_hsps (list of strings): List of the lines containing the HSPs for the same pair of proteins
-        blast_names (list of strings): List of the header in the blast outfmt 6 output
         blast_dtypes (dict): Type of the different columns in the blast outfmt 6 output
         HSPMIN (int, optional): [description]. Defaults to 100.
 
     Returns:
         pandas.DataFrame: Reduce DataFrame with only the significant hsps
-    """
-    df_hsps = pd.DataFrame(list_hsps, columns=blast_names)
-    df_hsps = df_hsps.astype(blast_dtypes)
+    """    
     
-    # Calculate a more precise percentage of identity for each independent HSP
-    df_hsps['id'] = np.floor(df_hsps.pident.values * df_hsps.length.values / 100 + 0.5)
-    df_hsps['pos'] = df_hsps['id']
+    dtypes = np.dtype(blast_dtypes)
     
-    # Get the sens of the HSP on the subject
-    df_hsps['sens'] = get_orientation(sstart=df_hsps.sstart.values, send=df_hsps.send.values)
+    df_hsps = np.array(list_hsps)
+    df_hsps = rfn.unstructured_to_structured(df_hsps, dtype=dtypes)
+
+    # Prepare the dtypes of the columns to add
+    dtype2add = [
+            ('id', np.int32),
+            ('pos', np.int32),
+            ('sens', np.int8),
+            ('lg_aln_subject', np.int32),
+            ('lg_aln_query', np.int32),
+            ('lgHSP', np.int32),
+            ('stat', np.int8),
+           ]
     
-    # Update the values of the position in case the sens is changed
-    df_hsps['sstart'] = update_values(old_values=df_hsps.sstart.values, sens=df_hsps.sens.values)
-    df_hsps['send'] = update_values(old_values=df_hsps.send.values, sens=df_hsps.sens.values)
+    dtype2add = np.dtype(dtype2add)
     
-    # Calculate the length of the alignment on the subject and query
-    df_hsps['lg_aln_subject'] = length_aln_on_sequence(start=df_hsps.sstart.values, end=df_hsps.send.values)
-    df_hsps['lg_aln_query'] = length_aln_on_sequence(start=df_hsps.qstart.values, end=df_hsps.qend.values)
-    
-    # Calculate length of the HSP
-    df_hsps['lgHSP'] = np.max([df_hsps.lg_aln_subject.values, df_hsps.lg_aln_query.values], axis=0)
-    
+    array2add = np.empty(df_hsps.shape, dtype=dtype2add)
+        
     # Order HSPS by decreasing score
-    df_hsps = df_hsps.sort_values('bitscore', ascending=False).reset_index(drop=True)
+    # ind = np.argsort(df_hsps[:,11].astype(np.float64))[::-1]
+    # ind = np.transpose([ind] * 18)
+    # df_hsps = np.take_along_axis(df_hsps, ind, axis=0)
+    ind = np.argsort(df_hsps, order='bitscore')[::-1]
+    df_hsps = df_hsps[ind]    
     
-    # Put Stats value to know which HSPS to concerve
-    df_hsps['stat'] = [1] + [-1]*(df_hsps.shape[0] - 1)
+    # Calculate a more precise percentage of identity for each independent HSP: 'pident': 2, 'length': 3
+    array2add['id'] = calculateIdentities(percIdentity=df_hsps['pident'], length=df_hsps['length'])
+    array2add['pos'] = array2add['id']
+    
+    # Get the sens of the HSP on the subject: 'sstart': 8, 'send': 9
+    array2add['sens'] = get_orientation(sstart=df_hsps['sstart'], send=df_hsps['send'])
+    
+    # Update the values of the position in case the sens is changed for the subject (as done in silix)
+    df_hsps['sstart'] = update_values(old_values=df_hsps['sstart'], sens=array2add['sens'])
+    df_hsps['send'] = update_values(old_values=df_hsps['send'], sens=array2add['sens'])
+    
+    # Calculate the length of the alignment on the subject and query: 'qstart': 6, 'qend': 7, 'sstart': 8, 'send': 9,
+    array2add['lg_aln_subject'] = length_aln_on_sequence(start=df_hsps['sstart'], end=df_hsps['send'])
+    array2add['lg_aln_query'] = length_aln_on_sequence(start=df_hsps['qstart'], end=df_hsps['qend'])
+    
+    # Calculate length of the HSP: lg_aln_subject: 15, lg_aln_query:16
+    array2add['lgHSP'] = np.max([array2add['lg_aln_subject'], array2add['lg_aln_query']], axis=0)
+    
+    # Put Stats value to know which HSPS to conserve
+    array2add['stat'] = (np.array([1] + [-1]*(df_hsps.shape[0] - 1)))
+    
+    # Concat df_hsps and array2add
+    df_hsps = rfn.merge_arrays([df_hsps, array2add], flatten = True, usemask = False)
     
     for hsp1_index in range(df_hsps.shape[0] - 1):
         for hsp2_index in range(hsp1_index + 1, df_hsps.shape[0]):
-            if df_hsps.at[hsp1_index, 'stat'] and df_hsps.at[hsp2_index, 'stat'] :                
-                values2update = checkHSPS(hsp1=df_hsps.iloc[hsp1_index].copy(), 
-                                          hsp2=df_hsps.iloc[hsp2_index].copy(), 
+            if df_hsps['stat'][hsp1_index] and df_hsps['stat'][hsp2_index]:
+                values2update = checkHSPS(hsp1=df_hsps[hsp1_index], 
+                                          hsp2=df_hsps[hsp2_index], 
                                           HSPMIN=HSPMIN)
-
+                
+                # print(hsp1_index, hsp2_index, values2update)
                 for value in values2update:
-                    df_hsps.at[hsp2_index, value] = values2update[value]
+                    df_hsps[hsp2_index][value] = values2update[value]
     
-    return df_hsps[df_hsps.stat == 1]
+    return df_hsps[df_hsps['stat'] == 1]
 
 ##########################################################################
 
+@jit(nopython=True)
 def calculate_coverage(length_total, length_query, length_subject, option_cov='mean'):
     """Calculate the coverage of a sequence.
 
@@ -384,6 +438,7 @@ def calculate_coverage(length_total, length_query, length_subject, option_cov='m
 
 ##########################################################################
 
+@jit(nopython=True)
 def calculate_percid(pos_total, length_query, length_subject, length_total, option_pid='mean'):
     """Calculates the percentage of identity of the total positives of the sequence.
 
@@ -429,26 +484,26 @@ def summarize_hits(df_hsps, length_query, length_subject, option_cov='mean', opt
     """
     
     # Sort HSPs by query start position
-    df_hsps.sort_values('qstart', inplace=True, ignore_index=True)
+    df_hsps = np.sort(df_hsps, order='qstart')
     
     # N-term delta between query and subject
-    delta_lg = abs(df_hsps.qstart.values[0] - df_hsps.sstart.values[0])
+    delta_lg = np.abs(df_hsps['qstart'] - df_hsps['sstart'])
     
     # C-term delta between query and subject and add to length difference between aligned sequences
-    delta_lg += abs((length_query - df_hsps.qend.values[-1]) - (length_subject - df_hsps.send.values[-1]))
+    delta_lg += np.abs((length_query - df_hsps['qend'][-1]) - (length_subject - df_hsps['send']))
     
     # Internal gaps 
-    query_starts = df_hsps.qstart.values[1:]
-    query_ends = df_hsps.qend.values[:-1]
-    subject_starts = df_hsps.sstart.values[1:]
-    subject_ends = df_hsps.send.values[:-1]
+    query_starts = df_hsps['qstart'][1:]
+    query_ends = df_hsps['qend'][:-1]
+    subject_starts = df_hsps['sstart'][1:]
+    subject_ends = df_hsps['send'][:-1]
     
     delta_lg += np.sum(np.abs((query_starts - query_ends) - (subject_starts - subject_ends)))
 
     # Calculate total length, score, Identities and Positives :
-    score_total = np.sum(df_hsps.bitscore.values)
-    length_total = np.sum(df_hsps.lgHSP.values)
-    pos_total = np.sum(df_hsps.pos.values)
+    score_total = np.sum(df_hsps['bitscore'])
+    length_total = np.sum(df_hsps['lgHSP'])
+    pos_total = np.sum(df_hsps['pos'])
     # id_total = np.sum(df_hsps.id.values)
     
     # Cumulative length of HSPs / shortest seq. length = % coverage
@@ -464,7 +519,7 @@ def summarize_hits(df_hsps, length_query, length_subject, option_cov='mean', opt
                                     length_total=length_total, 
                                     option_pid=option_pid)
     
-    evalue = max(df_hsps.evalue.values)
+    evalue = max(df_hsps['evalue'])
 
     return delta_lg, frac_HSPshlen, pospercentsh, evalue, score_total
 

@@ -143,15 +143,15 @@ def create_table_threshold(blast_out, families, protein_dict, output, output_rem
                                                     blast_names = blast_names,
                                                     HSPMIN = length_treshold)
 
-                if df_hsps.shape[0]:
-                    qseqid, sseqid, pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = df_hsps.values[0], 
+                if df_hsps.shape[0] == 1:
+                    qseqid, sseqid, pident_blast, coverage_blast, evalue_blast, score = utilsBlast.summarize_hit_only(split_line = df_hsps[0], 
                                                                                                 blast_header = blast_names,
                                                                                                 dict_protein = protein_dict,
                                                                                                 option_cov = option_cov,
                                                                                                 option_pid = option_pid)
                 else:
-                    sseqid = df_hsps.sseqid.values[0]
-                    qseqid = df_hsps.qseqid.values[0]
+                    sseqid = df_hsps['sseqid'][0]
+                    qseqid = df_hsps['qseqid'][0]
 
                     delta_lg, coverage_blast, pident_blast, evalue_blast, score = utilsBlast.summarize_hits(df_hsps = df_hsps, 
                                                                                                             length_query = protein_dict[qseqid], 
